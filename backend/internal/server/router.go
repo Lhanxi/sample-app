@@ -5,8 +5,8 @@ import (
 	"net/http"
 )
 
-func NewRouter(logger *slog.Logger) http.Handler {
-	handler := NewHandler(logger)
+func NewRouter(logger *slog.Logger, db DatabasePinger) http.Handler {
+	handler := NewHandler(logger, db)
 
 	mux := http.NewServeMux()
 

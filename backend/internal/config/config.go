@@ -14,6 +14,7 @@ type Config struct {
 	WriteTimeout    time.Duration
 	IdleTimeout     time.Duration
 	ShutdownTimeout time.Duration
+	DatabaseURL     string
 }
 
 func Load() (Config, error) {
@@ -41,6 +42,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	databaseURL := getString(
+		"DATABASE_URL",
+		"postgres://sample:sample@localhost:5432/sample?sslmode=disable",
+	)
 
 	return Config{
 		Environment:     getString("APP_ENV", "development"),
@@ -49,6 +54,7 @@ func Load() (Config, error) {
 		WriteTimeout:    writeTimeout,
 		IdleTimeout:     idleTimeout,
 		ShutdownTimeout: shutdownTimeout,
+		DatabaseURL:     databaseURL,
 	}, nil
 }
 
