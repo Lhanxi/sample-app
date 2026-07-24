@@ -10,7 +10,7 @@ func NewRouter(logger *slog.Logger) http.Handler {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /", handler.Root)
+	mux.HandleFunc("GET /{$}", handler.Root)
 	mux.HandleFunc("GET /health/live", handler.Liveness)
 	mux.HandleFunc("GET /health/ready", handler.Readiness)
 
