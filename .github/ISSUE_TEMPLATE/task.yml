@@ -1,0 +1,55 @@
+name: Task
+description: Track a development, maintenance or operational task.
+title: "[Task]: "
+labels:
+  - type/chore
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for implementation work that is not necessarily a new feature or a bug.
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      placeholder: Describe the task.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      placeholder: |
+        Included:
+        -
+
+        Excluded:
+        -
+    validations:
+      required: true
+
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Checklist
+      placeholder: |
+        - [ ] Step 1
+        - [ ] Step 2
+        - [ ] Step 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Any blockers or related issues?
+      placeholder: e.g. Depends on #12
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Additional implementation details or references.
