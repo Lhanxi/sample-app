@@ -92,7 +92,12 @@ func TestRouterRoutes(t *testing.T) {
 	}
 
 	itemHandler := item.NewHandler(routerItemService{}, testLogger())
-	router := NewRouter(testLogger(), fakeDatabase{}, itemHandler)
+	router := NewRouter(
+		testLogger(),
+		fakeDatabase{},
+		itemHandler,
+		"http://localhost:5173",
+	)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -138,7 +143,12 @@ func TestRouterRoutes(t *testing.T) {
 
 func TestRouterRegistersItemRoutes(t *testing.T) {
 	itemHandler := item.NewHandler(routerItemService{}, testLogger())
-	router := NewRouter(testLogger(), fakeDatabase{}, itemHandler)
+	router := NewRouter(
+		testLogger(),
+		fakeDatabase{},
+		itemHandler,
+		"http://localhost:5173",
+	)
 
 	tests := []struct {
 		name           string

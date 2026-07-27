@@ -42,8 +42,13 @@ func run() error {
 	itemHandler := item.NewHandler(itemService, logger)
 
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      server.NewRouter(logger, db, itemHandler),
+		Addr: fmt.Sprintf(":%d", cfg.Port),
+		Handler: server.NewRouter(
+			logger,
+			db,
+			itemHandler,
+			cfg.CORSAllowedOrigin,
+		),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 		IdleTimeout:  cfg.IdleTimeout,

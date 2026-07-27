@@ -14,6 +14,7 @@ func TestLoadUsesDefaultValues(t *testing.T) {
 	t.Setenv("IDLE_TIMEOUT", "")
 	t.Setenv("SHUTDOWN_TIMEOUT", "")
 	t.Setenv("DATABASE_URL", "")
+	t.Setenv("CORS_ALLOWED_ORIGIN", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -68,6 +69,14 @@ func TestLoadUsesDefaultValues(t *testing.T) {
 	if cfg.DatabaseURL != defaultDatabaseURL {
 		t.Errorf("DatabaseURL = %q; want %q", cfg.DatabaseURL, defaultDatabaseURL)
 	}
+
+	if cfg.CORSAllowedOrigin != "http://localhost:5173" {
+		t.Errorf(
+			"CORSAllowedOrigin = %q; want %q",
+			cfg.CORSAllowedOrigin,
+			"http://localhost:5173",
+		)
+	}
 }
 
 func TestLoadUsesEnvironmentValues(t *testing.T) {
@@ -78,6 +87,7 @@ func TestLoadUsesEnvironmentValues(t *testing.T) {
 	t.Setenv("IDLE_TIMEOUT", "30s")
 	t.Setenv("SHUTDOWN_TIMEOUT", "20s")
 	t.Setenv("DATABASE_URL", "postgres://test:test@database:5432/test")
+	t.Setenv("CORS_ALLOWED_ORIGIN", "https://app.example.com")
 
 	cfg, err := Load()
 	if err != nil {
@@ -133,6 +143,14 @@ func TestLoadUsesEnvironmentValues(t *testing.T) {
 			"DatabaseURL = %q; want %q",
 			cfg.DatabaseURL,
 			"postgres://test:test@database:5432/test",
+		)
+	}
+
+	if cfg.CORSAllowedOrigin != "https://app.example.com" {
+		t.Errorf(
+			"CORSAllowedOrigin = %q; want %q",
+			cfg.CORSAllowedOrigin,
+			"https://app.example.com",
 		)
 	}
 }
