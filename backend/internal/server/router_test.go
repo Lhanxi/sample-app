@@ -1,11 +1,43 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Lhanxi/sample-app/backend/internal/item"
 )
+
+type routerItemService struct{}
+
+func (routerItemService) List(context.Context) ([]item.Item, error) {
+	return []item.Item{}, nil
+}
+
+func (routerItemService) GetByID(context.Context, string) (item.Item, error) {
+	return item.Item{}, item.ErrNotFound
+}
+
+func (routerItemService) Create(
+	context.Context,
+	item.CreateItemRequest,
+) (item.Item, error) {
+	return item.Item{}, nil
+}
+
+func (routerItemService) Update(
+	context.Context,
+	string,
+	item.UpdateItemRequest,
+) (item.Item, error) {
+	return item.Item{}, nil
+}
+
+func (routerItemService) Delete(context.Context, string) error {
+	return nil
+}
 
 func TestRouterRoutes(t *testing.T) {
 	tests := []struct {
@@ -59,7 +91,8 @@ func TestRouterRoutes(t *testing.T) {
 		},
 	}
 
-	router := NewRouter(testLogger(), fakeDatabase{})
+	itemHandler := item.NewHandler(routerItemService{}, testLogger())
+	router := NewRouter(testLogger(), fakeDatabase{}, itemHandler)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -98,6 +131,66 @@ func TestRouterRoutes(t *testing.T) {
 						expectedValue,
 					)
 				}
+			}
+		})
+	}
+}
+
+func TestRouterRegistersItemRoutes(t *testing.T) {
+	itemHandler := item.NewHandler(routerItemService{}, testLogger())
+	router := NewRouter(testLogger(), fakeDatabase{}, itemHandler)
+
+	tests := []struct {
+		name           string
+		method         string
+		path           string
+		expectedStatus int
+	}{
+		{
+			name:           "list items",
+			method:         http.MethodGet,
+			path:           "/api/v1/items",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "create item",
+			method:         http.MethodPost,
+			path:           "/api/v1/items",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "get item",
+			method:         http.MethodGet,
+			path:           "/api/v1/items/not-a-uuid",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "update item",
+			method:         http.MethodPut,
+			path:           "/api/v1/items/not-a-uuid",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "delete item",
+			method:         http.MethodDelete,
+			path:           "/api/v1/items/b8f574d6-1d0d-4f63-b4a8-4ec847bd9f1d",
+			expectedStatus: http.StatusNoContent,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := httptest.NewRequest(tt.method, tt.path, nil)
+			recorder := httptest.NewRecorder()
+
+			router.ServeHTTP(recorder, request)
+
+			if recorder.Code != tt.expectedStatus {
+				t.Errorf(
+					"status code = %d; want %d",
+					recorder.Code,
+					tt.expectedStatus,
+				)
 			}
 		})
 	}
