@@ -8,13 +8,14 @@ import (
 )
 
 type Config struct {
-	Environment     string
-	Port            int
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	IdleTimeout     time.Duration
-	ShutdownTimeout time.Duration
-	DatabaseURL     string
+	Environment       string
+	Port              int
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
+	ShutdownTimeout   time.Duration
+	DatabaseURL       string
+	CORSAllowedOrigin string
 }
 
 func Load() (Config, error) {
@@ -55,6 +56,10 @@ func Load() (Config, error) {
 		IdleTimeout:     idleTimeout,
 		ShutdownTimeout: shutdownTimeout,
 		DatabaseURL:     databaseURL,
+		CORSAllowedOrigin: getString(
+			"CORS_ALLOWED_ORIGIN",
+			"http://localhost:5173",
+		),
 	}, nil
 }
 

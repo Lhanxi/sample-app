@@ -20,6 +20,39 @@ type responseRecorder struct {
 	bytes  int
 }
 
+func CORS(allowedOrigin string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		originAllowed := origin != "" && origin == allowedOrigin
+
+		w.Header().Add("Vary", "Origin")
+
+		if originAllowed {
+			w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+			w.Header().Set(
+				"Access-Control-Allow-Methods",
+				"GET, POST, PUT, DELETE, OPTIONS",
+			)
+			w.Header().Set(
+				"Access-Control-Allow-Headers",
+				"Content-Type, X-Request-ID",
+			)
+		}
+
+		if r.Method == http.MethodOptions {
+			if !originAllowed {
+				http.Error(w, "origin not allowed", http.StatusForbidden)
+				return
+			}
+
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (r *responseRecorder) WriteHeader(status int) {
 	r.status = status
 	r.ResponseWriter.WriteHeader(status)

@@ -11,6 +11,7 @@ func NewRouter(
 	logger *slog.Logger,
 	db DatabasePinger,
 	itemHandler *item.Handler,
+	corsAllowedOrigin string,
 ) http.Handler {
 	handler := NewHandler(logger, db)
 
@@ -28,6 +29,7 @@ func NewRouter(
 
 	var router http.Handler = mux
 
+	router = CORS(corsAllowedOrigin, router)
 	router = Logging(logger, router)
 	router = Recovery(logger, router)
 	router = RequestID(router)

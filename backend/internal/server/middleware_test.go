@@ -44,6 +44,89 @@ func TestRequestIDUsesExistingHeader(t *testing.T) {
 	}
 }
 
+func TestCORSAllowsConfiguredOrigin(t *testing.T) {
+	const allowedOrigin = "http://localhost:5173"
+
+	handler := CORS(
+		allowedOrigin,
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}),
+	)
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/items", nil)
+	request.Header.Set("Origin", allowedOrigin)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Errorf("status code = %d; want %d", recorder.Code, http.StatusOK)
+	}
+	if actual := recorder.Header().Get("Access-Control-Allow-Origin"); actual != allowedOrigin {
+		t.Errorf("allow origin = %q; want %q", actual, allowedOrigin)
+	}
+}
+
+func TestCORSHandlesPreflight(t *testing.T) {
+	const allowedOrigin = "http://localhost:5173"
+
+	nextCalled := false
+	handler := CORS(
+		allowedOrigin,
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			nextCalled = true
+		}),
+	)
+	request := httptest.NewRequest(http.MethodOptions, "/api/v1/items", nil)
+	request.Header.Set("Origin", allowedOrigin)
+	request.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNoContent {
+		t.Errorf(
+			"status code = %d; want %d",
+			recorder.Code,
+			http.StatusNoContent,
+		)
+	}
+	if nextCalled {
+		t.Error("preflight request reached the next handler")
+	}
+	if methods := recorder.Header().Get("Access-Control-Allow-Methods"); methods == "" {
+		t.Error("Access-Control-Allow-Methods is empty")
+	}
+	if headers := recorder.Header().Get("Access-Control-Allow-Headers"); headers == "" {
+		t.Error("Access-Control-Allow-Headers is empty")
+	}
+}
+
+func TestCORSRejectsDisallowedPreflightOrigin(t *testing.T) {
+	handler := CORS(
+		"http://localhost:5173",
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Error("disallowed preflight reached the next handler")
+		}),
+	)
+	request := httptest.NewRequest(http.MethodOptions, "/api/v1/items", nil)
+	request.Header.Set("Origin", "https://untrusted.example.com")
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Errorf(
+			"status code = %d; want %d",
+			recorder.Code,
+			http.StatusForbidden,
+		)
+	}
+	if origin := recorder.Header().Get("Access-Control-Allow-Origin"); origin != "" {
+		t.Errorf("allow origin = %q; want empty", origin)
+	}
+}
+
 func TestRequestIDGeneratesHeader(t *testing.T) {
 	handler := RequestID(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
