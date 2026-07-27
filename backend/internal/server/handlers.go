@@ -1,18 +1,25 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 )
 
-type Handler struct {
-	logger *slog.Logger
+type DatabasePinger interface {
+	Ping(context.Context) error
 }
 
-func NewHandler(logger *slog.Logger) *Handler {
+type Handler struct {
+	logger *slog.Logger
+	db     DatabasePinger
+}
+
+func NewHandler(logger *slog.Logger, db DatabasePinger) *Handler {
 	return &Handler{
 		logger: logger,
+		db:     db,
 	}
 }
 
@@ -30,6 +37,16 @@ func (h *Handler) Liveness(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
+	if err := h.db.Ping(r.Context()); err != nil {
+		h.logger.Error("database readiness check failed", "error", err)
+
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"status": "not ready",
+		})
+
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status": "ready",
 	})

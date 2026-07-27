@@ -11,6 +11,8 @@ import (
 	"syscall"
 
 	"github.com/Lhanxi/sample-app/backend/internal/config"
+	"github.com/Lhanxi/sample-app/backend/internal/database"
+	"github.com/Lhanxi/sample-app/backend/internal/item"
 	"github.com/Lhanxi/sample-app/backend/internal/server"
 )
 
@@ -29,9 +31,19 @@ func run() error {
 
 	logger := newLogger(cfg.Environment)
 
+	db, err := database.Open(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	defer db.Close()
+
+	itemRepository := item.NewPostgresRepository(db)
+	itemService := item.NewService(itemRepository)
+	itemHandler := item.NewHandler(itemService, logger)
+
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      server.NewRouter(logger),
+		Handler:      server.NewRouter(logger, db, itemHandler),
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 		IdleTimeout:  cfg.IdleTimeout,

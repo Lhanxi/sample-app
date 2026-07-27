@@ -13,6 +13,7 @@ func TestLoadUsesDefaultValues(t *testing.T) {
 	t.Setenv("WRITE_TIMEOUT", "")
 	t.Setenv("IDLE_TIMEOUT", "")
 	t.Setenv("SHUTDOWN_TIMEOUT", "")
+	t.Setenv("DATABASE_URL", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -62,6 +63,11 @@ func TestLoadUsesDefaultValues(t *testing.T) {
 			10*time.Second,
 		)
 	}
+
+	const defaultDatabaseURL = "postgres://sample:sample@localhost:5432/sample?sslmode=disable"
+	if cfg.DatabaseURL != defaultDatabaseURL {
+		t.Errorf("DatabaseURL = %q; want %q", cfg.DatabaseURL, defaultDatabaseURL)
+	}
 }
 
 func TestLoadUsesEnvironmentValues(t *testing.T) {
@@ -71,6 +77,7 @@ func TestLoadUsesEnvironmentValues(t *testing.T) {
 	t.Setenv("WRITE_TIMEOUT", "7s")
 	t.Setenv("IDLE_TIMEOUT", "30s")
 	t.Setenv("SHUTDOWN_TIMEOUT", "20s")
+	t.Setenv("DATABASE_URL", "postgres://test:test@database:5432/test")
 
 	cfg, err := Load()
 	if err != nil {
@@ -118,6 +125,14 @@ func TestLoadUsesEnvironmentValues(t *testing.T) {
 			"ShutdownTimeout = %v; want %v",
 			cfg.ShutdownTimeout,
 			20*time.Second,
+		)
+	}
+
+	if cfg.DatabaseURL != "postgres://test:test@database:5432/test" {
+		t.Errorf(
+			"DatabaseURL = %q; want %q",
+			cfg.DatabaseURL,
+			"postgres://test:test@database:5432/test",
 		)
 	}
 }
