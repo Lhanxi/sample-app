@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -11,7 +13,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend
+    name: Backend tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -39,7 +41,7 @@ jobs:
         run: go test ./...
 
   frontend:
-    name: Frontend
+    name: Frontend tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -73,6 +75,38 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build
+
+  e2e:
+    name: Playwright end-to-end tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium

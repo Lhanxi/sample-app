@@ -1,20 +1,70 @@
 services:
   postgres:
-    image: postgres:17
-    container_name: sample-postgres
+    image: postgres:17-alpine
     environment:
       POSTGRES_DB: sample
       POSTGRES_USER: sample
       POSTGRES_PASSWORD: sample
-    ports:
-      - "5432:5432"
     volumes:
       - sample-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sample -d sample"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+    networks:
+      - sample-network
+
+  migrate:
+    image: migrate/migrate:v4.18.1
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://sample:sample@postgres:5432/sample?sslmode=disable",
+        "up",
+      ]
+    volumes:
+      - ./backend/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sample-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: production
+      PORT: "8080"
+      DATABASE_URL: postgres://sample:sample@postgres:5432/sample?sslmode=disable
+      CORS_ALLOWED_ORIGIN: http://localhost:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - sample-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - sample-network
 
 volumes:
   sample-postgres-data:
+
+networks:
+  sample-network:
+    driver: bridge
