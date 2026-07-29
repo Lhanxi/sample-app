@@ -1,0 +1,23 @@
+{
+  "name": "sample-app",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "lint-staged": "lint-staged"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.1"
+  },
+  "lint-staged": {
+    "backend/**/*.go": "gofmt -w",
+    "frontend/**/*.{ts,tsx,js,jsx}": [
+      "npm --prefix frontend exec -- oxlint --fix",
+      "npm --prefix frontend exec -- prettier --write"
+    ],
+    "frontend/**/*.{json,css,md}": "npm --prefix frontend exec -- prettier --write"
+  }
+}
