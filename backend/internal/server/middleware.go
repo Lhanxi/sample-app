@@ -135,6 +135,7 @@ func newRequestID() string {
 	if _, err := rand.Read(bytes); err != nil {
 		return "unknown"
 	}
+
 	return hex.EncodeToString(bytes)
 }
 
