@@ -17,5 +17,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Build images
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Build ARM64 images
         run: docker compose build
+        env:
+          DOCKER_DEFAULT_PLATFORM: linux/arm64
