@@ -14,13 +14,19 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -trimpath \
     -ldflags="-s -w" \
     -o /app/bin/api \
-    ./cmd/api
+    ./cmd/api && \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /app/bin/migrate \
+    ./cmd/migrate
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /app
 
 COPY --from=builder --chown=nonroot:nonroot /app/bin/api /app/api
+COPY --from=builder --chown=nonroot:nonroot /app/bin/migrate /app/migrate
 COPY --from=builder --chown=nonroot:nonroot /app/migrations /app/migrations
 
 USER nonroot:nonroot
