@@ -37,6 +37,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -45,6 +50,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           load: true
+          platforms: linux/arm64
           push: false
           tags: local/sample-${{ matrix.name }}:${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.name }}
@@ -85,6 +91,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
+          platforms: linux/arm64
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
@@ -107,6 +114,7 @@ jobs:
             echo "### ${{ matrix.name }} image"
             echo
             echo "- Image: \`${{ matrix.image }}\`"
+            echo "- Platform: \`linux/arm64\`"
             echo "- Immutable tag: \`sha-${GITHUB_SHA::7}\`"
             echo "- Digest: \`${{ steps.publish.outputs.digest }}\`"
           } >> "$GITHUB_STEP_SUMMARY"

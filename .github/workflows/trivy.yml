@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -39,11 +36,16 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Build backend image
-        run: docker build --tag sample-backend:test ./backend
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
 
-      - name: Build frontend image
-        run: docker build --tag sample-frontend:test ./frontend
+      - name: Build backend ARM64 image
+        run: docker build --platform linux/arm64 --tag sample-backend:test ./backend
+
+      - name: Build frontend ARM64 image
+        run: docker build --platform linux/arm64 --tag sample-frontend:test ./frontend
 
       - name: Scan backend image
         uses: aquasecurity/trivy-action@v0.36.0
