@@ -118,3 +118,83 @@ jobs:
             echo "- Immutable tag: \`sha-${GITHUB_SHA::7}\`"
             echo "- Digest: \`${{ steps.publish.outputs.digest }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  promote-dev:
+    name: Open dev promotion pull request
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out GitOps repository
+        uses: actions/checkout@v6
+        with:
+          repository: Lhanxi/sample-gitops
+          ref: main
+          token: ${{ secrets.SAMPLE_GITOPS_TOKEN }}
+
+      - name: Update dev image tags
+        env:
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          IMAGE_TAG="${IMAGE_TAG:0:11}"
+
+          sed -i "/^backend:/,/^[^ ]/ s/^    tag: .*/    tag: ${IMAGE_TAG}/" \
+            environments/dev/backend-values.yaml
+          sed -i "/^image:/,/^[^ ]/ s/^  tag: .*/  tag: ${IMAGE_TAG}/" \
+            environments/dev/frontend-values.yaml
+
+          grep -F "    tag: ${IMAGE_TAG}" environments/dev/backend-values.yaml
+          grep -F "  tag: ${IMAGE_TAG}" environments/dev/frontend-values.yaml
+
+      - name: Commit and push promotion branch
+        id: promotion
+        env:
+          BRANCH_NAME: automation/promote-dev
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          IMAGE_TAG="${IMAGE_TAG:0:11}"
+
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "sample-app promotion bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin \
+            "${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}" || true
+          git checkout -b "$BRANCH_NAME"
+          git add environments/dev/backend-values.yaml environments/dev/frontend-values.yaml
+          git commit -m "chore(dev): promote images to ${IMAGE_TAG}"
+          git push --force-with-lease origin "HEAD:${BRANCH_NAME}"
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update promotion pull request
+        if: steps.promotion.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SAMPLE_GITOPS_TOKEN }}
+          IMAGE_TAG: ${{ steps.promotion.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+
+          if gh pr view automation/promote-dev --repo Lhanxi/sample-gitops >/dev/null 2>&1; then
+            gh pr edit automation/promote-dev \
+              --repo Lhanxi/sample-gitops \
+              --title "chore(dev): promote images to ${IMAGE_TAG}" \
+              --body "Promotes the backend and frontend images built from [sample-app@${GITHUB_SHA}](https://github.com/Lhanxi/sample-app/commit/${GITHUB_SHA}) to dev."
+          else
+            gh pr create \
+              --repo Lhanxi/sample-gitops \
+              --base main \
+              --head automation/promote-dev \
+              --title "chore(dev): promote images to ${IMAGE_TAG}" \
+              --body "Promotes the backend and frontend images built from [sample-app@${GITHUB_SHA}](https://github.com/Lhanxi/sample-app/commit/${GITHUB_SHA}) to dev."
+          fi
