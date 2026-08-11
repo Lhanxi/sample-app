@@ -14,12 +14,14 @@ func NewRouter(
 	corsAllowedOrigin string,
 ) http.Handler {
 	handler := NewHandler(logger, db)
+	metrics := NewHTTPMetrics()
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /{$}", handler.Root)
 	mux.HandleFunc("GET /health/live", handler.Liveness)
 	mux.HandleFunc("GET /health/ready", handler.Readiness)
+	mux.Handle("GET /metrics", metrics.Handler())
 
 	mux.HandleFunc("GET /api/v1/items", itemHandler.List)
 	mux.HandleFunc("POST /api/v1/items", itemHandler.Create)
@@ -32,6 +34,7 @@ func NewRouter(
 	router = CORS(corsAllowedOrigin, router)
 	router = Logging(logger, router)
 	router = Recovery(logger, router)
+	router = metrics.Middleware(router)
 	router = RequestID(router)
 
 	return router

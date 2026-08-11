@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Lhanxi/sample-app/backend/internal/item"
@@ -76,6 +78,13 @@ func TestRouterRoutes(t *testing.T) {
 			},
 		},
 		{
+			name:           "metrics route",
+			method:         http.MethodGet,
+			path:           "/metrics",
+			expectedStatus: http.StatusOK,
+			expectedBody:   nil,
+		},
+		{
 			name:           "unknown route",
 			method:         http.MethodGet,
 			path:           "/unknown",
@@ -138,6 +147,49 @@ func TestRouterRoutes(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRouterExposesHTTPMetrics(t *testing.T) {
+	itemHandler := item.NewHandler(routerItemService{}, testLogger())
+	router := NewRouter(
+		testLogger(),
+		fakeDatabase{},
+		itemHandler,
+		"http://localhost:5173",
+	)
+
+	request := httptest.NewRequest(http.MethodGet, "/health/live", nil)
+	router.ServeHTTP(httptest.NewRecorder(), request)
+
+	request = httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("status code = %d; want %d", response.StatusCode, http.StatusOK)
+	}
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("failed to read metrics response: %v", err)
+	}
+
+	metrics := string(body)
+	expectedValues := []string{
+		"sample_backend_http_requests_total",
+		`method="GET",route="GET /health/live",status="200"`,
+		"sample_backend_http_request_duration_seconds",
+		"sample_backend_http_in_flight_requests 0",
+	}
+
+	for _, expected := range expectedValues {
+		if !strings.Contains(metrics, expected) {
+			t.Errorf("metrics output does not contain %q", expected)
+		}
 	}
 }
 
