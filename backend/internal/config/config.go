@@ -16,6 +16,8 @@ type Config struct {
 	ShutdownTimeout   time.Duration
 	DatabaseURL       string
 	CORSAllowedOrigin string
+	OTLPEndpoint      string
+	ServiceName       string
 }
 
 func Load() (Config, error) {
@@ -60,6 +62,8 @@ func Load() (Config, error) {
 			"CORS_ALLOWED_ORIGIN",
 			"http://localhost:5173",
 		),
+		OTLPEndpoint: getString("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
+		ServiceName:  getString("OTEL_SERVICE_NAME", "sample-backend"),
 	}, nil
 }
 
