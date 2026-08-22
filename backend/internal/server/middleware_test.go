@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestRequestIDUsesExistingHeader(t *testing.T) {
@@ -184,6 +186,13 @@ func TestLoggingMiddleware(t *testing.T) {
 	)
 
 	request := httptest.NewRequest(http.MethodPost, "/items", nil)
+	traceID := trace.TraceID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+	spanID := trace.SpanID{1, 2, 3, 4, 5, 6, 7, 8}
+	spanContext := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: traceID,
+		SpanID:  spanID,
+	})
+	request = request.WithContext(trace.ContextWithSpanContext(request.Context(), spanContext))
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, request)
@@ -195,6 +204,8 @@ func TestLoggingMiddleware(t *testing.T) {
 		`"method":"POST"`,
 		`"path":"/items"`,
 		`"status":201`,
+		`"trace_id":"0102030405060708090a0b0c0d0e0f10"`,
+		`"span_id":"0102030405060708"`,
 	}
 
 	for _, expected := range expectedValues {

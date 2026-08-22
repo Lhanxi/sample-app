@@ -9,11 +9,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Lhanxi/sample-app/backend/internal/config"
 	"github.com/Lhanxi/sample-app/backend/internal/database"
 	"github.com/Lhanxi/sample-app/backend/internal/item"
 	"github.com/Lhanxi/sample-app/backend/internal/server"
+	"github.com/Lhanxi/sample-app/backend/internal/telemetry"
 )
 
 func main() {
@@ -30,6 +32,24 @@ func run() error {
 	}
 
 	logger := newLogger(cfg.Environment)
+
+	shutdownTelemetry, err := telemetry.NewTracerProvider(
+		context.Background(),
+		cfg.ServiceName,
+		cfg.Environment,
+		cfg.OTLPEndpoint,
+	)
+	if err != nil {
+		return fmt.Errorf("configure tracing: %w", err)
+	}
+	defer func() {
+		shutdownContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := shutdownTelemetry(shutdownContext); err != nil {
+			logger.Error("failed to shut down tracing", "error", err)
+		}
+	}()
 
 	db, err := database.Open(context.Background(), cfg.DatabaseURL)
 	if err != nil {

@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type contextKey string
@@ -93,8 +97,7 @@ func Logging(logger *slog.Logger, next http.Handler) http.Handler {
 
 		next.ServeHTTP(recorder, r)
 
-		logger.Info(
-			"http request",
+		attributes := []any{
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", recorder.status,
@@ -102,7 +105,10 @@ func Logging(logger *slog.Logger, next http.Handler) http.Handler {
 			"duration", time.Since(start),
 			"request_id", requestIDFromContext(r.Context()),
 			"remote_address", r.RemoteAddr,
-		)
+		}
+		attributes = append(attributes, traceLogAttributes(r.Context())...)
+
+		logger.Info("http request", attributes...)
 	})
 }
 
@@ -110,12 +116,14 @@ func Recovery(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				logger.Error(
-					"panic recovered",
+				attributes := []any{
 					"error", recovered,
 					"stack", string(debug.Stack()),
 					"request_id", requestIDFromContext(r.Context()),
-				)
+				}
+				attributes = append(attributes, traceLogAttributes(r.Context())...)
+
+				logger.Error("panic recovered", attributes...)
 
 				http.Error(
 					w,
@@ -127,6 +135,31 @@ func Recovery(logger *slog.Logger, next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func Tracing(next http.Handler) http.Handler {
+	instrumented := otelhttp.NewHandler(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+
+			if r.Pattern != "" {
+				span := trace.SpanFromContext(r.Context())
+				span.SetName(r.Method + " " + r.Pattern)
+				span.SetAttributes(attribute.String("http.route", r.Pattern))
+			}
+		}),
+		"http.request",
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			switch r.URL.Path {
+			case "/metrics", "/health/live", "/health/ready":
+				return false
+			default:
+				return true
+			}
+		}),
+	)
+
+	return instrumented
 }
 
 func newRequestID() string {
@@ -146,4 +179,16 @@ func requestIDFromContext(ctx context.Context) string {
 	}
 
 	return value
+}
+
+func traceLogAttributes(ctx context.Context) []any {
+	spanContext := trace.SpanContextFromContext(ctx)
+	if !spanContext.IsValid() {
+		return nil
+	}
+
+	return []any{
+		"trace_id", spanContext.TraceID().String(),
+		"span_id", spanContext.SpanID().String(),
+	}
 }

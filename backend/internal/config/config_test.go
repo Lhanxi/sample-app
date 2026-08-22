@@ -15,6 +15,8 @@ func TestLoadUsesDefaultValues(t *testing.T) {
 	t.Setenv("SHUTDOWN_TIMEOUT", "")
 	t.Setenv("DATABASE_URL", "")
 	t.Setenv("CORS_ALLOWED_ORIGIN", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_SERVICE_NAME", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -77,6 +79,14 @@ func TestLoadUsesDefaultValues(t *testing.T) {
 			"http://localhost:5173",
 		)
 	}
+
+	if cfg.OTLPEndpoint != "" {
+		t.Errorf("OTLPEndpoint = %q; want empty", cfg.OTLPEndpoint)
+	}
+
+	if cfg.ServiceName != "sample-backend" {
+		t.Errorf("ServiceName = %q; want %q", cfg.ServiceName, "sample-backend")
+	}
 }
 
 func TestLoadUsesEnvironmentValues(t *testing.T) {
@@ -88,6 +98,8 @@ func TestLoadUsesEnvironmentValues(t *testing.T) {
 	t.Setenv("SHUTDOWN_TIMEOUT", "20s")
 	t.Setenv("DATABASE_URL", "postgres://test:test@database:5432/test")
 	t.Setenv("CORS_ALLOWED_ORIGIN", "https://app.example.com")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "alloy.monitoring.svc:4317")
+	t.Setenv("OTEL_SERVICE_NAME", "test-backend")
 
 	cfg, err := Load()
 	if err != nil {
@@ -152,6 +164,18 @@ func TestLoadUsesEnvironmentValues(t *testing.T) {
 			cfg.CORSAllowedOrigin,
 			"https://app.example.com",
 		)
+	}
+
+	if cfg.OTLPEndpoint != "alloy.monitoring.svc:4317" {
+		t.Errorf(
+			"OTLPEndpoint = %q; want %q",
+			cfg.OTLPEndpoint,
+			"alloy.monitoring.svc:4317",
+		)
+	}
+
+	if cfg.ServiceName != "test-backend" {
+		t.Errorf("ServiceName = %q; want %q", cfg.ServiceName, "test-backend")
 	}
 }
 

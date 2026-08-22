@@ -35,6 +35,7 @@ func NewRouter(
 	router = Logging(logger, router)
 	router = Recovery(logger, router)
 	router = metrics.Middleware(router)
+	router = Tracing(router)
 	router = RequestID(router)
 
 	return router
